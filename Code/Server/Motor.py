@@ -1,7 +1,11 @@
 import time
 import math
+import logging
 from PCA9685 import PCA9685
 from ADC import *
+
+logger = logging.getLogger(__name__)
+
 
 class Motor:
     def __init__(self):
@@ -79,6 +83,7 @@ class Motor:
         self.left_Lower_Wheel(duty2)
         self.right_Upper_Wheel(duty3)
         self.right_Lower_Wheel(duty4)
+        logger.info('Set motor model with duties: %d, %d, %d, %d', duty1, duty2, duty3, duty4)
             
     def Rotate(self,n):
         angle = n
