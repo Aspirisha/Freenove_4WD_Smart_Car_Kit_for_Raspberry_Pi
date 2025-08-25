@@ -1,5 +1,11 @@
+import logging
+
 import smbus
 import time
+
+logger = logging.getLogger(__name__)
+
+
 class Adc:
     def __init__(self):
         # Get I2C bus
@@ -14,12 +20,12 @@ class Adc:
         # ADS7830 Command 
         self.ADS7830_CMD                        = 0x84 # Single-Ended Inputs
         
-        for i in range(3):
-            aa=self.bus.read_byte_data(self.ADDRESS,0xf4)
-            if aa < 150:
-                self.Index="PCF8591"
-            else:
-                self.Index="ADS7830" 
+        aa=self.bus.read_byte_data(self.ADDRESS,0xf4)
+        if aa < 150:
+            self.Index="PCF8591"
+        else:
+            self.Index="ADS7830"
+        logger.info("Detected ADC type: %s", self.Index)
     def analogReadPCF8591(self,chn):#PCF8591 read ADC value,chn:0,1,2,3
         value=[0,0,0,0,0,0,0,0,0]
         for i in range(9):
@@ -38,7 +44,7 @@ class Adc:
                 break;
         voltage = value1 / 256.0 * 3.3  #calculate the voltage value
         voltage = round(voltage,2)
-        return voltage
+        return voltageq
     def recvADS7830(self,channel):
         """Select the Command data from the given provided value above"""
         COMMAND_SET = self.ADS7830_CMD | ((((channel<<2)|(channel>>1))&0x07)<<4)
@@ -65,13 +71,14 @@ def loop():
     adc=Adc()
     while True:
         Left_IDR=adc.recvADC(0)
-        print (Left_IDR)
+        logger.info("The photoresistor voltage on the left is %.2fV", Left_IDR)
         Right_IDR=adc.recvADC(1)
-        print (Right_IDR)
-        Power=adc.recvADC(2)*3
-        print (Power)
+        logger.info("The photoresistor voltage on the right is %.2fV", Right_IDR)
+        voltage=adc.recvADC(2)
+        logger.info('Battery voltage is %.2fV', voltage)
         time.sleep(1)
-        print ('----')
+
+
 def destroy():
     pass
 # Main program logic follows:
