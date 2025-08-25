@@ -1,5 +1,6 @@
 import io
 import os
+import logging
 import socket
 import struct
 import time
@@ -14,14 +15,15 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
+logger = logging.getLogger(__name__)
+
 
 class mywindow(QMainWindow,Ui_server_ui):
     
     def __init__(self):
-        self.user_ui=True
-        self.start_tcp=False
+        self.user_ui=False
+        self.start_tcp=True
         self.TCP_Server=Server()
-        self.parseOpt()
         if self.user_ui:
             self.app = QApplication(sys.argv)
             super(mywindow,self).__init__()
@@ -62,16 +64,7 @@ class mywindow(QMainWindow,Ui_server_ui):
  
     def mouseReleaseEvent(self, QMouseEvent):
         self.m_drag=False
-        
-    def parseOpt(self):
-        self.opts,self.args = getopt.getopt(sys.argv[1:],"tn")
-        for o,a in self.opts:
-            if o in ('-t'):
-                print ("Open TCP")
-                self.start_tcp=True
-            elif o in ('-n'):
-                self.user_ui=False
-                        
+
     def close(self):
         try:
            stop_thread(self.SendVideo)
@@ -117,6 +110,11 @@ class mywindow(QMainWindow,Ui_server_ui):
             print ("Close TCP")
             
 if __name__ == '__main__':
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="[%(asctime)s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d] %(message)s",
+        datefmt="%d/%b/%Y %H:%M:%S",
+        stream=sys.stdout)
     try:
         myshow=mywindow()
         if myshow.user_ui==True:
