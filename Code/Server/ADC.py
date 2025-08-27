@@ -7,84 +7,73 @@ logger = logging.getLogger(__name__)
 
 
 class Adc:
+    REFERENCE_VOLTAGE = 3.3
+
     def __init__(self):
         # Get I2C bus
         self.bus = smbus.SMBus(1)
-        
+
         # I2C address of the device
-        self.ADDRESS            = 0x48
-        
-        # PCF8591 Command
-        self.PCF8591_CMD                        =0x40  #Command
-        
-        # ADS7830 Command 
-        self.ADS7830_CMD                        = 0x84 # Single-Ended Inputs
-        
-        aa=self.bus.read_byte_data(self.ADDRESS,0xf4)
+        self.ADDRESS = 0x48
+
+        # ADS7830 Command
+        # 0x84 = 10000100:
+        #  Bit 7: always 1 for single-ended mode, here 1
+        #  Bits 6–4: channel selection (CH0–CH7), here 0 channel
+        #  Bits 3–0: power-down / mode control (here 0100 for "power-down between conversions" mode)
+        self.ADS7830_CMD = 0x84
+
+        aa = self.bus.read_byte_data(self.ADDRESS, 0xF4)
         if aa < 150:
-            self.Index="PCF8591"
-        else:
-            self.Index="ADS7830"
+            self.Index = "PCF8591"
+            raise ValueError("PCF8591 not supported")
+        self.Index = "ADS7830"
         logger.info("Detected ADC type: %s", self.Index)
-    def analogReadPCF8591(self,chn):#PCF8591 read ADC value,chn:0,1,2,3
-        value=[0,0,0,0,0,0,0,0,0]
-        for i in range(9):
-            value[i] = self.bus.read_byte_data(self.ADDRESS,self.PCF8591_CMD+chn)
-        value=sorted(value)
-        return value[4]   
-        
-    def analogWritePCF8591(self,value):#PCF8591 write DAC value
-        self.bus.write_byte_data(self.ADDRESS,cmd,value)
-        
-    def recvPCF8591(self,channel):#PCF8591 write DAC value
-        while(1):
-            value1 = self.analogReadPCF8591(channel)   #read the ADC value of channel 0,1,2,
-            value2 = self.analogReadPCF8591(channel)
-            if value1==value2:
-                break;
-        voltage = value1 / 256.0 * 3.3  #calculate the voltage value
-        voltage = round(voltage,2)
-        return voltageq
-    def recvADS7830(self,channel):
-        """Select the Command data from the given provided value above"""
-        COMMAND_SET = self.ADS7830_CMD | ((((channel<<2)|(channel>>1))&0x07)<<4)
-        self.bus.write_byte(self.ADDRESS,COMMAND_SET)
-        while(1):
+
+    def recvADS7830(self, channel):
+        # Select correct channel setting bits
+        COMMAND_SET = self.ADS7830_CMD | (
+            (((channel << 2) | (channel >> 1)) & 0x07) << 4
+        )
+        self.bus.write_byte(self.ADDRESS, COMMAND_SET)
+        while 1:
             value1 = self.bus.read_byte(self.ADDRESS)
             value2 = self.bus.read_byte(self.ADDRESS)
-            if value1==value2:
-                break;
-        voltage = value1 / 255.0 * 3.3  #calculate the voltage value
-        voltage = round(voltage,2)
+            if value1 == value2:
+                break
+        voltage = value1 / 255.0 * self.REFERENCE_VOLTAGE  # calculate the voltage value
+        voltage = round(voltage, 2)
         return voltage
-        
-    def recvADC(self,channel):
-        if self.Index=="PCF8591":
-            data=self.recvPCF8591(channel)
-        elif self.Index=="ADS7830":
-            data=self.recvADS7830(channel)
-        return data
+
+    def recvADC(self, channel):
+        return self.recvADS7830(channel)
+
     def i2cClose(self):
         self.bus.close()
 
+
 def loop():
-    adc=Adc()
+    adc = Adc()
     while True:
-        Left_IDR=adc.recvADC(0)
+        Left_IDR = adc.recvADC(0)
         logger.info("The photoresistor voltage on the left is %.2fV", Left_IDR)
-        Right_IDR=adc.recvADC(1)
+        Right_IDR = adc.recvADC(1)
         logger.info("The photoresistor voltage on the right is %.2fV", Right_IDR)
-        voltage=adc.recvADC(2)
-        logger.info('Battery voltage is %.2fV', voltage)
+        voltage = adc.recvADC(2)
+        logger.info("Battery voltage is %.2fV", voltage)
         time.sleep(1)
 
 
 def destroy():
     pass
+
+
 # Main program logic follows:
-if __name__ == '__main__':
-    print ('Program is starting ... ')
+if __name__ == "__main__":
+    print("Program is starting ... ")
     try:
         loop()
-    except KeyboardInterrupt:  # When 'Ctrl+C' is pressed, the child program destroy() will be  executed.
+    except (
+        KeyboardInterrupt
+    ):  # When 'Ctrl+C' is pressed, the child program destroy() will be  executed.
         destroy()
