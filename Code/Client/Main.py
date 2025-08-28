@@ -220,6 +220,56 @@ class mywindow(QMainWindow, Ui_Client):
         self.workerObject.moveToThread(self.workerThread)
         self.workerThread.start()
 
+    def _send_motor_command(self):
+        full_speed = 1500
+        part_speed = 0
+        if not self.Key_W and not self.Key_S:
+            logger.info("Stopping motors")
+            left_upper_wheel = 0
+            left_lower_wheel = 0
+            right_upper_wheel = 0
+            right_lower_wheel = 0
+        elif self.Key_W:
+            if self.Key_D:
+                logger.info("Moving forward right")
+                left_upper_wheel = full_speed
+                left_lower_wheel = full_speed
+                right_upper_wheel = part_speed
+                right_lower_wheel = part_speed
+            elif self.Key_A:
+                logger.info("Moving forward left")
+                left_upper_wheel = part_speed
+                left_lower_wheel = part_speed
+                right_upper_wheel = full_speed
+                right_lower_wheel = full_speed
+            else:  # just forward
+                logger.info("Moving forward")
+                left_upper_wheel = full_speed
+                left_lower_wheel = full_speed
+                right_upper_wheel = full_speed
+                right_lower_wheel = full_speed
+        elif self.Key_S:
+            if self.Key_A:
+                logger.info("Moving back left")
+                left_upper_wheel = -part_speed
+                left_lower_wheel = -part_speed
+                right_upper_wheel = -full_speed
+                right_lower_wheel = -full_speed
+            elif self.Key_D:
+                logger.info("Moving back right")
+                left_upper_wheel = -full_speed
+                left_lower_wheel = -full_speed
+                right_upper_wheel = -part_speed
+                right_lower_wheel = -part_speed
+            else:
+                logger.info("Moving back")
+                left_upper_wheel = -full_speed
+                left_lower_wheel = -full_speed
+                right_upper_wheel = -full_speed
+                right_lower_wheel = -full_speed
+        command = f"#{left_upper_wheel}#{left_lower_wheel}#{right_upper_wheel}#{right_lower_wheel}\n"
+        logger.info(f"Sending motor command: {command.strip()}")
+        self.TCP.sendData(cmd.CMD_MOTOR + command)
     def onPbChanged(self, value):
         self.progress_Power.setValue(value)
 
@@ -337,11 +387,11 @@ class mywindow(QMainWindow, Ui_Client):
             pass
         else:
             if event.key() == Qt.Key_W:
-                self.on_btn_ForWard()
                 self.Key_W = True
+                self._send_motor_command()
             elif event.key() == Qt.Key_S:
-                self.on_btn_BackWard()
                 self.Key_S = True
+                self._send_motor_command()
             elif event.modifiers() == Qt.ShiftModifier and event.key() == Qt.Key_A:
                 self.on_btn_Turn_Left()
                 self.Key_A = True
@@ -349,11 +399,11 @@ class mywindow(QMainWindow, Ui_Client):
                 self.on_btn_Turn_Right()
                 self.Key_D = True
             elif event.key() == Qt.Key_A:
-                self.on_btn_Moveleft()
                 self.Key_A = True
+                self._send_motor_command()
             elif event.key() == Qt.Key_D:
-                self.on_btn_Moveright()
                 self.Key_D = True
+                self._send_motor_command()
 
             elif event.key() == Qt.Key_Q:
                 self.on_btn_Dialeft()
@@ -373,25 +423,25 @@ class mywindow(QMainWindow, Ui_Client):
 
     def keyReleaseEvent(self, event):
 
-        if (event.key() == Qt.Key_W):
+        if event.key() == Qt.Key_W:
             time.sleep(0.05)
-            if (event.key() == Qt.Key_W):
+            if event.key() == Qt.Key_W:
                 if not (event.isAutoRepeat()) and self.Key_W is True:
-                    self.on_btn_Stop()
                     self.Key_W = False
-        elif (event.key() == Qt.Key_A):
+                    self._send_motor_command()
+        elif event.key() == Qt.Key_A:
             if not (event.isAutoRepeat()) and self.Key_A is True:
-                self.on_btn_Stop()
                 self.Key_A = False
-        elif (event.key() == Qt.Key_S):
+                self._send_motor_command()
+        elif event.key() == Qt.Key_S:
             if not (event.isAutoRepeat()) and self.Key_S is True:
-                self.on_btn_Stop()
                 self.Key_S = False
-        elif (event.key() == Qt.Key_D):
+                self._send_motor_command()
+        elif event.key() == Qt.Key_D:
             if not (event.isAutoRepeat()) and self.Key_D is True:
-                self.on_btn_Stop()
                 self.Key_D = False
-        elif (event.key() == Qt.Key_Q):
+                self._send_motor_command()
+        elif event.key() == Qt.Key_Q:
             if not (event.isAutoRepeat()) and self.Key_Q is True:
                 self.on_btn_Stop()
                 self.Key_Q = False
