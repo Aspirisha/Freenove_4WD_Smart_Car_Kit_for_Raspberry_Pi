@@ -1,5 +1,7 @@
-#!/usr/bin/python 
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
+import logging
+
 import numpy as np
 import cv2
 import socket
@@ -10,15 +12,19 @@ import imghdr
 import sys
 from threading import Timer
 from threading import Thread
+from queue import Queue
 from PIL import Image
 from Command import COMMAND as cmd
 from Thread import *
 from Client_Ui import Ui_Client
+from Video import VideoStreaming
 from Video import *
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
+
+logger = logging.getLogger(__name__)
 
 
 class ProgBar(QObject):
@@ -33,6 +39,25 @@ class SigStr(QObject):
 
     def send(self, text):
         self.sigStr.emit(text)
+
+
+class FrameGrabber(QObject):
+    finished = pyqtSignal()
+    frame_signal = pyqtSignal(float, np.ndarray)
+
+    def __init__(self, ready_frames: Queue):
+        super().__init__()
+
+        self._ready_frames = ready_frames
+
+    @pyqtSlot()
+    def run(self):
+        while True:
+            stamp, frame = self._ready_frames.get()
+            if stamp is None:
+                break
+            self.frame_signal.emit(stamp, frame)
+        self.finished.emit()
 
 
 class mywindow(QMainWindow, Ui_Client):
@@ -173,8 +198,6 @@ class mywindow(QMainWindow, Ui_Client):
 
         self.Window_Min.clicked.connect(self.windowMinimumed)
         self.Window_Close.clicked.connect(self.close)
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.time)
 
         self.Pb = ProgBar()
         self.Pb.sigPB.connect(self.onPbChanged)
@@ -184,6 +207,18 @@ class mywindow(QMainWindow, Ui_Client):
 
         self.L = SigStr()
         self.L.sigStr.connect(self.onLightChanged)
+
+    def _init_video_receiver_thread(self):
+        self.workerThread = QThread()
+        self.workerObject = FrameGrabber(self.TCP.ready_frames)
+        self.workerThread.started.connect(self.workerObject.run)
+        self.workerObject.finished.connect(self.workerThread.quit)
+        self.workerObject.finished.connect(self.workerObject.deleteLater)
+        self.workerThread.finished.connect(self.workerThread.deleteLater)
+        self.workerObject.frame_signal.connect(self.on_frame)
+
+        self.workerObject.moveToThread(self.workerThread)
+        self.workerThread.start()
 
     def onPbChanged(self, value):
         self.progress_Power.setValue(value)
@@ -656,7 +691,6 @@ class mywindow(QMainWindow, Ui_Client):
             self.TCP.StopTcpcClient()
 
     def close(self):
-        self.timer.stop()
         try:
             stop_thread(self.recv)
             stop_thread(self.streaming)
@@ -710,61 +744,53 @@ class mywindow(QMainWindow, Ui_Client):
                     # self.progress_Power.setValue(percent_power)
                     self.Pb.send(percent_power)
 
-    def is_valid_jpg(self, jpg_file):
-        try:
-            bValid = True
-            if jpg_file.split('.')[-1].lower() == 'jpg':
-                with open(jpg_file, 'rb') as f:
-                    buf = f.read()
-                    if not buf.startswith(b'\xff\xd8'):
-                        bValid = False
-                    elif buf[6:10] in (b'JFIF', b'Exif'):
-                        if not buf.rstrip(b'\0\r\n').endswith(b'\xff\xd9'):
-                            bValid = False
-                    else:
-                        try:
-                            Image.open(f).verify()
-                        except:
-                            bValid = False
-            else:
-                return bValid
-        except:
-            pass
-        return bValid
-
     def Tracking_Face(self):
         if self.Btn_Tracking_Faces.text() == "Tracing-On":
             self.Btn_Tracking_Faces.setText("Tracing-Off")
         else:
             self.Btn_Tracking_Faces.setText("Tracing-On")
-    def find_Face(self,face_x,face_y):
-        if face_x!=0 and face_y!=0:
-            offset_x=float(face_x/400-0.5)*2
-            offset_y=float(face_y/300-0.5)*2
-            delta_degree_x = int(4* offset_x)
+
+    def find_Face(self, face_x, face_y):
+        if face_x != 0 and face_y != 0:
+            offset_x = float(face_x / 400 - 0.5) * 2
+            offset_y = float(face_y / 300 - 0.5) * 2
+            delta_degree_x = int(4 * offset_x)
             delta_degree_y = int(-4 * offset_y)
-            self.servo1=self.servo1+delta_degree_x
-            self.servo2=self.servo2+delta_degree_y
-            if offset_x > -0.15 and offset_y >-0.15 and offset_x < 0.15 and offset_y <0.15:
+            self.servo1 = self.servo1 + delta_degree_x
+            self.servo2 = self.servo2 + delta_degree_y
+            if (
+                offset_x > -0.15
+                and offset_y > -0.15
+                and offset_x < 0.15
+                and offset_y < 0.15
+            ):
                 pass
             else:
                 self.HSlider_Servo1.setValue(self.servo1)
                 self.VSlider_Servo2.setValue(self.servo2)
 
-    def time(self):
-        self.TCP.video_Flag = False
-        try:
-            if self.is_valid_jpg('video.jpg'):
-                self.label_Video.setPixmap(QPixmap('video.jpg'))
-                if self.Btn_Tracking_Faces.text() == "Tracing-Off":
-                    self.find_Face(self.TCP.face_x, self.TCP.face_y)
-        except Exception as e:
-            print(e)
-        self.TCP.video_Flag = True
+    @pyqtSlot(float, np.ndarray)
+    def on_frame(self, stamp, frame):
+        assert frame is not None
+        height, width, channel = frame.shape
+        bytesPerLine = channel * width
+        qImg = QImage(
+            frame.data, width, height, bytesPerLine, QImage.Format_RGB888
+        ).rgbSwapped()
+        # now = time.monotonic()
+        # print('delay:', now - stamp)
+        self.label_Video.setPixmap(QPixmap(qImg))
 
 
-if __name__ == '__main__':
-    QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling)
+if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="[%(asctime)s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d] %(message)s",
+        datefmt="%d/%b/%Y %H:%M:%S",
+        stream=sys.stdout,
+    )
+
+    QCoreApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
     app = QApplication(sys.argv)
     myshow = mywindow()
     myshow.show()
