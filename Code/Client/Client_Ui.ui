@@ -326,28 +326,6 @@ background:qradialgradient(spread:pad,cx:0.5,cy:0.5,radius:0.5,fx:0.5,fy:0.5,sto
     <string>Turn Right</string>
    </property>
   </widget>
-  <widget class="QPushButton" name="Btn_Video">
-   <property name="geometry">
-    <rect>
-     <x>290</x>
-     <y>370</y>
-     <width>90</width>
-     <height>30</height>
-    </rect>
-   </property>
-   <property name="font">
-    <font>
-     <family>Malgun Gothic</family>
-     <pointsize>10</pointsize>
-    </font>
-   </property>
-   <property name="styleSheet">
-    <string notr="true"/>
-   </property>
-   <property name="text">
-    <string>Open Video</string>
-   </property>
-  </widget>
   <widget class="QLabel" name="label_Video">
    <property name="geometry">
     <rect>

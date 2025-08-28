@@ -160,9 +160,6 @@ class mywindow(QMainWindow, Ui_Client):
         self.Btn_Turn_Right.pressed.connect(self.on_btn_Turn_Right)
         self.Btn_Turn_Right.released.connect(self.on_btn_Stop)
 
-
-        self.Btn_Video.clicked.connect(self.on_btn_video)
-
         self.Btn_Up.clicked.connect(self.on_btn_Up)
         self.Btn_Left.clicked.connect(self.on_btn_Left)
         self.Btn_Down.clicked.connect(self.on_btn_Down)
@@ -447,14 +444,6 @@ class mywindow(QMainWindow, Ui_Client):
         else:
             self.Btn_Rotate.setText("Rotate-On")
             self.Rotate_Flag = 1
-
-    def on_btn_video(self):
-        if self.Btn_Video.text() == 'Open Video':
-            self.timer.start(34)
-            self.Btn_Video.setText('Close Video')
-        elif self.Btn_Video.text() == 'Close Video':
-            self.timer.stop()
-            self.Btn_Video.setText('Open Video')
 
     def on_btn_Up(self):
         self.servo2 = self.servo2 + 10
