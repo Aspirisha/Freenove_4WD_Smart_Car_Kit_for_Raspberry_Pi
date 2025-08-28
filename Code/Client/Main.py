@@ -3,26 +3,17 @@
 import logging
 
 import numpy as np
-import cv2
-import socket
 import os
-import io
 import time
-import imghdr
 import sys
-from threading import Timer
 from threading import Thread
 from queue import Queue
-from PIL import Image
 from Command import COMMAND as cmd
-from Thread import *
 from Client_Ui import Ui_Client
 from Video import VideoStreaming
-from Video import *
-from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import *
-from PyQt5.QtWidgets import *
-from PyQt5.QtGui import *
+from PyQt5.QtCore import QThread, QCoreApplication, Qt, pyqtSignal, QObject, pyqtSlot
+from PyQt5.QtGui import QPixmap, QImage, QIcon
+from PyQt5.QtWidgets import QApplication, QMainWindow
 
 logger = logging.getLogger(__name__)
 
@@ -65,9 +56,9 @@ class mywindow(QMainWindow, Ui_Client):
         global timer
         super(mywindow, self).__init__()
         self.setupUi(self)
-        self.endChar = '\n'
-        self.intervalChar = '#'
-        file = open('IP.txt', 'r')
+        self.endChar = "\n"
+        self.intervalChar = "#"
+        file = open("IP.txt", "r")
         self.IP.setText(str(file.readline()))
         file.close()
         self.h = self.IP.text()
@@ -101,15 +92,15 @@ class mywindow(QMainWindow, Ui_Client):
         self.progress_Power.setMinimum(0)
         self.progress_Power.setMaximum(100)
 
-        self.name.setAlignment(QtCore.Qt.AlignCenter)
-        self.label_Servo1.setText('90')
-        self.label_Servo2.setText('90')
-        self.label_Video.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
-        self.label_Servo1.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
-        self.label_Servo2.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
+        self.name.setAlignment(Qt.AlignCenter)
+        self.label_Servo1.setText("90")
+        self.label_Servo2.setText("90")
+        self.label_Video.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+        self.label_Servo1.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+        self.label_Servo2.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
 
-        self.label_FineServo1.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
-        self.label_FineServo2.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
+        self.label_FineServo1.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+        self.label_FineServo2.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
 
         self.HSlider_Servo1.setMinimum(0)
         self.HSlider_Servo1.setMaximum(180)
@@ -136,30 +127,54 @@ class mywindow(QMainWindow, Ui_Client):
         self.VSlider_Servo2.valueChanged.connect(self.Change_Up_Down)
 
         self.checkBox_Led1.setChecked(False)
-        self.checkBox_Led1.stateChanged.connect(lambda: self.LedChange(self.checkBox_Led1))
+        self.checkBox_Led1.stateChanged.connect(
+            lambda: self.LedChange(self.checkBox_Led1)
+        )
         self.checkBox_Led2.setChecked(False)
-        self.checkBox_Led2.stateChanged.connect(lambda: self.LedChange(self.checkBox_Led2))
+        self.checkBox_Led2.stateChanged.connect(
+            lambda: self.LedChange(self.checkBox_Led2)
+        )
         self.checkBox_Led3.setChecked(False)
-        self.checkBox_Led3.stateChanged.connect(lambda: self.LedChange(self.checkBox_Led3))
+        self.checkBox_Led3.stateChanged.connect(
+            lambda: self.LedChange(self.checkBox_Led3)
+        )
         self.checkBox_Led4.setChecked(False)
-        self.checkBox_Led4.stateChanged.connect(lambda: self.LedChange(self.checkBox_Led4))
+        self.checkBox_Led4.stateChanged.connect(
+            lambda: self.LedChange(self.checkBox_Led4)
+        )
         self.checkBox_Led5.setChecked(False)
-        self.checkBox_Led5.stateChanged.connect(lambda: self.LedChange(self.checkBox_Led5))
+        self.checkBox_Led5.stateChanged.connect(
+            lambda: self.LedChange(self.checkBox_Led5)
+        )
         self.checkBox_Led6.setChecked(False)
-        self.checkBox_Led6.stateChanged.connect(lambda: self.LedChange(self.checkBox_Led6))
+        self.checkBox_Led6.stateChanged.connect(
+            lambda: self.LedChange(self.checkBox_Led6)
+        )
         self.checkBox_Led7.setChecked(False)
-        self.checkBox_Led7.stateChanged.connect(lambda: self.LedChange(self.checkBox_Led7))
+        self.checkBox_Led7.stateChanged.connect(
+            lambda: self.LedChange(self.checkBox_Led7)
+        )
         self.checkBox_Led8.setChecked(False)
-        self.checkBox_Led8.stateChanged.connect(lambda: self.LedChange(self.checkBox_Led8))
+        self.checkBox_Led8.stateChanged.connect(
+            lambda: self.LedChange(self.checkBox_Led8)
+        )
 
         self.checkBox_Led_Mode1.setChecked(False)
-        self.checkBox_Led_Mode1.stateChanged.connect(lambda: self.LedChange(self.checkBox_Led_Mode1))
+        self.checkBox_Led_Mode1.stateChanged.connect(
+            lambda: self.LedChange(self.checkBox_Led_Mode1)
+        )
         self.checkBox_Led_Mode2.setChecked(False)
-        self.checkBox_Led_Mode2.stateChanged.connect(lambda: self.LedChange(self.checkBox_Led_Mode2))
+        self.checkBox_Led_Mode2.stateChanged.connect(
+            lambda: self.LedChange(self.checkBox_Led_Mode2)
+        )
         self.checkBox_Led_Mode3.setChecked(False)
-        self.checkBox_Led_Mode3.stateChanged.connect(lambda: self.LedChange(self.checkBox_Led_Mode3))
+        self.checkBox_Led_Mode3.stateChanged.connect(
+            lambda: self.LedChange(self.checkBox_Led_Mode3)
+        )
         self.checkBox_Led_Mode4.setChecked(False)
-        self.checkBox_Led_Mode4.stateChanged.connect(lambda: self.LedChange(self.checkBox_Led_Mode4))
+        self.checkBox_Led_Mode4.stateChanged.connect(
+            lambda: self.LedChange(self.checkBox_Led_Mode4)
+        )
 
         self.Btn_Mode1.setChecked(True)
         self.Btn_Mode1.toggled.connect(lambda: self.on_btn_Mode(self.Btn_Mode1))
@@ -270,6 +285,7 @@ class mywindow(QMainWindow, Ui_Client):
         command = f"#{left_upper_wheel}#{left_lower_wheel}#{right_upper_wheel}#{right_lower_wheel}\n"
         logger.info(f"Sending motor command: {command.strip()}")
         self.TCP.sendData(cmd.CMD_MOTOR + command)
+
     def onPbChanged(self, value):
         self.progress_Power.setValue(value)
 
@@ -294,18 +310,18 @@ class mywindow(QMainWindow, Ui_Client):
         self.m_drag = False
 
     def keyPressEvent(self, event):
-        if (event.key() == Qt.Key_Up):
+        if event.key() == Qt.Key_Up:
             self.on_btn_Up()
-        elif (event.key() == Qt.Key_Left):
+        elif event.key() == Qt.Key_Left:
             self.on_btn_Left()
-        elif (event.key() == Qt.Key_Down):
+        elif event.key() == Qt.Key_Down:
             self.on_btn_Down()
-        elif (event.key() == Qt.Key_Right):
+        elif event.key() == Qt.Key_Right:
             self.on_btn_Right()
-        elif (event.key() == Qt.Key_Home):
+        elif event.key() == Qt.Key_Home:
             self.on_btn_Home()
 
-        if (event.key() == Qt.Key_R):
+        if event.key() == Qt.Key_R:
             if self.Btn_Mode1.isChecked() is True:
                 self.Btn_Mode2.setChecked(True)
             elif self.Btn_Mode2.isChecked() is True:
@@ -315,7 +331,7 @@ class mywindow(QMainWindow, Ui_Client):
             elif self.Btn_Mode4.isChecked() is True:
                 self.Btn_Mode1.setChecked(True)
 
-        if (event.key() == Qt.Key_L):
+        if event.key() == Qt.Key_L:
             count = 0
             if self.checkBox_Led_Mode1.isChecked() is True:
                 self.checkBox_Led_Mode2.setChecked(True)
@@ -335,49 +351,47 @@ class mywindow(QMainWindow, Ui_Client):
             if count == 4:
                 self.checkBox_Led_Mode1.setChecked(True)
 
-        if (event.key() == Qt.Key_C):
+        if event.key() == Qt.Key_C:
             self.on_btn_Connect()
-        if (event.key() == Qt.Key_V):
-            self.on_btn_video()
-        if (event.key() == Qt.Key_O):
+        if event.key() == Qt.Key_O:
             self.on_btn_rotate()
 
-        if (event.key() == Qt.Key_1):
+        if event.key() == Qt.Key_1:
             if self.checkBox_Led1.isChecked() is True:
                 self.checkBox_Led1.setChecked(False)
             else:
                 self.checkBox_Led1.setChecked(True)
-        elif (event.key() == Qt.Key_2):
+        elif event.key() == Qt.Key_2:
             if self.checkBox_Led2.isChecked() is True:
                 self.checkBox_Led2.setChecked(False)
             else:
                 self.checkBox_Led2.setChecked(True)
-        elif (event.key() == Qt.Key_3):
+        elif event.key() == Qt.Key_3:
             if self.checkBox_Led3.isChecked() is True:
                 self.checkBox_Led3.setChecked(False)
             else:
                 self.checkBox_Led3.setChecked(True)
-        elif (event.key() == Qt.Key_4):
+        elif event.key() == Qt.Key_4:
             if self.checkBox_Led4.isChecked() is True:
                 self.checkBox_Led4.setChecked(False)
             else:
                 self.checkBox_Led4.setChecked(True)
-        elif (event.key() == Qt.Key_5):
+        elif event.key() == Qt.Key_5:
             if self.checkBox_Led5.isChecked() is True:
                 self.checkBox_Led5.setChecked(False)
             else:
                 self.checkBox_Led5.setChecked(True)
-        elif (event.key() == Qt.Key_6):
+        elif event.key() == Qt.Key_6:
             if self.checkBox_Led6.isChecked() is True:
                 self.checkBox_Led6.setChecked(False)
             else:
                 self.checkBox_Led6.setChecked(True)
-        elif (event.key() == Qt.Key_7):
+        elif event.key() == Qt.Key_7:
             if self.checkBox_Led7.isChecked() is True:
                 self.checkBox_Led7.setChecked(False)
             else:
                 self.checkBox_Led7.setChecked(True)
-        elif (event.key() == Qt.Key_8):
+        elif event.key() == Qt.Key_8:
             if self.checkBox_Led8.isChecked() is True:
                 self.checkBox_Led8.setChecked(False)
             else:
@@ -445,20 +459,20 @@ class mywindow(QMainWindow, Ui_Client):
             if not (event.isAutoRepeat()) and self.Key_Q is True:
                 self.on_btn_Stop()
                 self.Key_Q = False
-        elif (event.key() == Qt.Key_E):
+        elif event.key() == Qt.Key_E:
             if not (event.isAutoRepeat()) and self.Key_E is True:
                 self.on_btn_Stop()
                 self.Key_E = False
-        elif (event.key() == Qt.Key_Z):
+        elif event.key() == Qt.Key_Z:
             if not (event.isAutoRepeat()) and self.Key_Z is True:
                 self.on_btn_Stop()
                 self.Key_Z = False
-        elif (event.key() == Qt.Key_X):
+        elif event.key() == Qt.Key_X:
             if not (event.isAutoRepeat()) and self.Key_X is True:
                 self.on_btn_Stop()
                 self.Key_X = False
 
-        if (event.key() == Qt.Key_Space):
+        if event.key() == Qt.Key_Space:
             if not (event.isAutoRepeat()) and self.Key_Space is True:
                 self.on_btn_Buzzer()
                 self.Key_Space = False
@@ -561,46 +575,74 @@ class mywindow(QMainWindow, Ui_Client):
         self.VSlider_Servo2.setValue(self.servo2)
 
     def on_btn_Buzzer(self):
-        if self.Btn_Buzzer.text() == 'Buzzer':
-            self.TCP.sendData(cmd.CMD_BUZZER + self.intervalChar + '1' + self.endChar)
-            self.Btn_Buzzer.setText('Noise')
+        if self.Btn_Buzzer.text() == "Buzzer":
+            self.TCP.sendData(cmd.CMD_BUZZER + self.intervalChar + "1" + self.endChar)
+            self.Btn_Buzzer.setText("Noise")
         else:
-            self.TCP.sendData(cmd.CMD_BUZZER + self.intervalChar + '0' + self.endChar)
-            self.Btn_Buzzer.setText('Buzzer')
+            self.TCP.sendData(cmd.CMD_BUZZER + self.intervalChar + "0" + self.endChar)
+            self.Btn_Buzzer.setText("Buzzer")
 
     def on_btn_Ultrasonic(self):
         if self.Ultrasonic.text() == "Ultrasonic":
-            self.TCP.sendData(cmd.CMD_SONIC + self.intervalChar + '1' + self.endChar)
+            self.TCP.sendData(cmd.CMD_SONIC + self.intervalChar + "1" + self.endChar)
         else:
-            self.TCP.sendData(cmd.CMD_SONIC + self.intervalChar + '0' + self.endChar)
+            self.TCP.sendData(cmd.CMD_SONIC + self.intervalChar + "0" + self.endChar)
             self.Ultrasonic.setText("Ultrasonic")
 
     def on_btn_Light(self):
         if self.Light.text() == "Light":
-            self.TCP.sendData(cmd.CMD_LIGHT + self.intervalChar + '1' + self.endChar)
+            self.TCP.sendData(cmd.CMD_LIGHT + self.intervalChar + "1" + self.endChar)
         else:
-            self.TCP.sendData(cmd.CMD_LIGHT + self.intervalChar + '0' + self.endChar)
+            self.TCP.sendData(cmd.CMD_LIGHT + self.intervalChar + "0" + self.endChar)
             self.Light.setText("Light")
 
     def Change_Left_Right(self):  # Left or Right
         self.servo1 = self.HSlider_Servo1.value()
-        self.TCP.sendData(cmd.CMD_SERVO + self.intervalChar + '0' + self.intervalChar + str(self.servo1) + self.endChar)
+        self.TCP.sendData(
+            cmd.CMD_SERVO
+            + self.intervalChar
+            + "0"
+            + self.intervalChar
+            + str(self.servo1)
+            + self.endChar
+        )
         self.label_Servo1.setText("%d" % self.servo1)
 
     def Change_Up_Down(self):  # Up or Down
         self.servo2 = self.VSlider_Servo2.value()
-        self.TCP.sendData(cmd.CMD_SERVO + self.intervalChar + '1' + self.intervalChar + str(self.servo2) + self.endChar)
+        self.TCP.sendData(
+            cmd.CMD_SERVO
+            + self.intervalChar
+            + "1"
+            + self.intervalChar
+            + str(self.servo2)
+            + self.endChar
+        )
         self.label_Servo2.setText("%d" % self.servo2)
 
     def Fine_Tune_Left_Right(self):  # fine tune Left or Right
         self.label_FineServo1.setText(str(self.HSlider_FineServo1.value()))
         data = self.servo1 + self.HSlider_FineServo1.value()
-        self.TCP.sendData(cmd.CMD_SERVO + self.intervalChar + '0' + self.intervalChar + str(data) + self.endChar)
+        self.TCP.sendData(
+            cmd.CMD_SERVO
+            + self.intervalChar
+            + "0"
+            + self.intervalChar
+            + str(data)
+            + self.endChar
+        )
 
     def Fine_Tune_Up_Down(self):  # fine tune Up or Down
         self.label_FineServo2.setText(str(self.HSlider_FineServo2.value()))
         data = self.servo2 + self.HSlider_FineServo2.value()
-        self.TCP.sendData(cmd.CMD_SERVO + self.intervalChar + '1' + self.intervalChar + str(data) + self.endChar)
+        self.TCP.sendData(
+            cmd.CMD_SERVO
+            + self.intervalChar
+            + "1"
+            + self.intervalChar
+            + str(data)
+            + self.endChar
+        )
 
     def windowMinimumed(self):
         self.showMinimized()
@@ -609,127 +651,202 @@ class mywindow(QMainWindow, Ui_Client):
         R = self.Color_R.text()
         G = self.Color_G.text()
         B = self.Color_B.text()
-        led_Off = self.intervalChar + str(0) + self.intervalChar + str(0) + self.intervalChar + str(0) + self.endChar
-        color = self.intervalChar + str(R) + self.intervalChar + str(G) + self.intervalChar + str(B) + self.endChar
+        led_Off = (
+            self.intervalChar
+            + str(0)
+            + self.intervalChar
+            + str(0)
+            + self.intervalChar
+            + str(0)
+            + self.endChar
+        )
+        color = (
+            self.intervalChar
+            + str(R)
+            + self.intervalChar
+            + str(G)
+            + self.intervalChar
+            + str(B)
+            + self.endChar
+        )
         if b.text() == "Led1":
             self.led_Index = str(0x01)
             if b.isChecked() is True:
-                self.TCP.sendData(cmd.CMD_LED + self.intervalChar + self.led_Index + color)
+                self.TCP.sendData(
+                    cmd.CMD_LED + self.intervalChar + self.led_Index + color
+                )
             else:
-                self.TCP.sendData(cmd.CMD_LED + self.intervalChar + self.led_Index + led_Off)
+                self.TCP.sendData(
+                    cmd.CMD_LED + self.intervalChar + self.led_Index + led_Off
+                )
         if b.text() == "Led2":
             self.led_Index = str(0x02)
             if b.isChecked() is True:
-                self.TCP.sendData(cmd.CMD_LED + self.intervalChar + self.led_Index + color)
+                self.TCP.sendData(
+                    cmd.CMD_LED + self.intervalChar + self.led_Index + color
+                )
             else:
-                self.TCP.sendData(cmd.CMD_LED + self.intervalChar + self.led_Index + led_Off)
+                self.TCP.sendData(
+                    cmd.CMD_LED + self.intervalChar + self.led_Index + led_Off
+                )
         if b.text() == "Led3":
             self.led_Index = str(0x04)
             if b.isChecked() is True:
-                self.TCP.sendData(cmd.CMD_LED + self.intervalChar + self.led_Index + color)
+                self.TCP.sendData(
+                    cmd.CMD_LED + self.intervalChar + self.led_Index + color
+                )
             else:
-                self.TCP.sendData(cmd.CMD_LED + self.intervalChar + self.led_Index + led_Off)
+                self.TCP.sendData(
+                    cmd.CMD_LED + self.intervalChar + self.led_Index + led_Off
+                )
         if b.text() == "Led4":
             self.led_Index = str(0x08)
             if b.isChecked() is True:
-                self.TCP.sendData(cmd.CMD_LED + self.intervalChar + self.led_Index + color)
+                self.TCP.sendData(
+                    cmd.CMD_LED + self.intervalChar + self.led_Index + color
+                )
             else:
-                self.TCP.sendData(cmd.CMD_LED + self.intervalChar + self.led_Index + led_Off)
+                self.TCP.sendData(
+                    cmd.CMD_LED + self.intervalChar + self.led_Index + led_Off
+                )
         if b.text() == "Led5":
             self.led_Index = str(0x10)
             if b.isChecked() is True:
-                self.TCP.sendData(cmd.CMD_LED + self.intervalChar + self.led_Index + color)
+                self.TCP.sendData(
+                    cmd.CMD_LED + self.intervalChar + self.led_Index + color
+                )
             else:
-                self.TCP.sendData(cmd.CMD_LED + self.intervalChar + self.led_Index + led_Off)
+                self.TCP.sendData(
+                    cmd.CMD_LED + self.intervalChar + self.led_Index + led_Off
+                )
         if b.text() == "Led6":
             self.led_Index = str(0x20)
             if b.isChecked() is True:
-                self.TCP.sendData(cmd.CMD_LED + self.intervalChar + self.led_Index + color)
+                self.TCP.sendData(
+                    cmd.CMD_LED + self.intervalChar + self.led_Index + color
+                )
             else:
-                self.TCP.sendData(cmd.CMD_LED + self.intervalChar + self.led_Index + led_Off)
+                self.TCP.sendData(
+                    cmd.CMD_LED + self.intervalChar + self.led_Index + led_Off
+                )
         if b.text() == "Led7":
             self.led_Index = str(0x40)
             if b.isChecked() is True:
-                self.TCP.sendData(cmd.CMD_LED + self.intervalChar + self.led_Index + color)
+                self.TCP.sendData(
+                    cmd.CMD_LED + self.intervalChar + self.led_Index + color
+                )
             else:
-                self.TCP.sendData(cmd.CMD_LED + self.intervalChar + self.led_Index + led_Off)
+                self.TCP.sendData(
+                    cmd.CMD_LED + self.intervalChar + self.led_Index + led_Off
+                )
         if b.text() == "Led8":
             self.led_Index = str(0x80)
             if b.isChecked() is True:
-                self.TCP.sendData(cmd.CMD_LED + self.intervalChar + self.led_Index + color)
+                self.TCP.sendData(
+                    cmd.CMD_LED + self.intervalChar + self.led_Index + color
+                )
             else:
-                self.TCP.sendData(cmd.CMD_LED + self.intervalChar + self.led_Index + led_Off)
+                self.TCP.sendData(
+                    cmd.CMD_LED + self.intervalChar + self.led_Index + led_Off
+                )
         if b.text() == "Led_Mode1":
             if b.isChecked() is True:
                 self.checkBox_Led_Mode2.setChecked(False)
                 self.checkBox_Led_Mode3.setChecked(False)
                 self.checkBox_Led_Mode4.setChecked(False)
-                self.TCP.sendData(cmd.CMD_LED_MOD + self.intervalChar + '1' + self.endChar)
+                self.TCP.sendData(
+                    cmd.CMD_LED_MOD + self.intervalChar + "1" + self.endChar
+                )
             else:
-                self.TCP.sendData(cmd.CMD_LED_MOD + self.intervalChar + '0' + self.endChar)
+                self.TCP.sendData(
+                    cmd.CMD_LED_MOD + self.intervalChar + "0" + self.endChar
+                )
         if b.text() == "Led_Mode2":
             if b.isChecked() is True:
 
                 self.checkBox_Led_Mode1.setChecked(False)
                 self.checkBox_Led_Mode3.setChecked(False)
                 self.checkBox_Led_Mode4.setChecked(False)
-                self.TCP.sendData(cmd.CMD_LED_MOD + self.intervalChar + '2' + self.endChar)
+                self.TCP.sendData(
+                    cmd.CMD_LED_MOD + self.intervalChar + "2" + self.endChar
+                )
             else:
-                self.TCP.sendData(cmd.CMD_LED_MOD + self.intervalChar + '0' + self.endChar)
+                self.TCP.sendData(
+                    cmd.CMD_LED_MOD + self.intervalChar + "0" + self.endChar
+                )
         if b.text() == "Led_Mode3":
             if b.isChecked() is True:
                 self.checkBox_Led_Mode2.setChecked(False)
                 self.checkBox_Led_Mode1.setChecked(False)
                 self.checkBox_Led_Mode4.setChecked(False)
-                self.TCP.sendData(cmd.CMD_LED_MOD + self.intervalChar + '3' + self.endChar)
+                self.TCP.sendData(
+                    cmd.CMD_LED_MOD + self.intervalChar + "3" + self.endChar
+                )
             else:
-                self.TCP.sendData(cmd.CMD_LED_MOD + self.intervalChar + '0' + self.endChar)
+                self.TCP.sendData(
+                    cmd.CMD_LED_MOD + self.intervalChar + "0" + self.endChar
+                )
         if b.text() == "Led_Mode4":
             if b.isChecked() is True:
                 self.checkBox_Led_Mode2.setChecked(False)
                 self.checkBox_Led_Mode3.setChecked(False)
                 self.checkBox_Led_Mode1.setChecked(False)
-                self.TCP.sendData(cmd.CMD_LED_MOD + self.intervalChar + '4' + self.endChar)
+                self.TCP.sendData(
+                    cmd.CMD_LED_MOD + self.intervalChar + "4" + self.endChar
+                )
             else:
-                self.TCP.sendData(cmd.CMD_LED_MOD + self.intervalChar + '0' + self.endChar)
+                self.TCP.sendData(
+                    cmd.CMD_LED_MOD + self.intervalChar + "0" + self.endChar
+                )
 
     def on_btn_Mode(self, Mode):
         if Mode.text() == "M-Free":
             if Mode.isChecked() is True:
                 # self.timer.start(34)
-                self.TCP.sendData(cmd.CMD_MODE + self.intervalChar + 'one' + self.endChar)
+                self.TCP.sendData(
+                    cmd.CMD_MODE + self.intervalChar + "one" + self.endChar
+                )
         if Mode.text() == "M-Light":
             if Mode.isChecked() is True:
                 # self.timer.stop()
-                self.TCP.sendData(cmd.CMD_MODE + self.intervalChar + 'two' + self.endChar)
+                self.TCP.sendData(
+                    cmd.CMD_MODE + self.intervalChar + "two" + self.endChar
+                )
         if Mode.text() == "M-Sonic":
             if Mode.isChecked() is True:
                 # self.timer.stop()
-                self.TCP.sendData(cmd.CMD_MODE + self.intervalChar + 'three' + self.endChar)
+                self.TCP.sendData(
+                    cmd.CMD_MODE + self.intervalChar + "three" + self.endChar
+                )
         if Mode.text() == "M-Line":
             if Mode.isChecked() is True:
                 # self.timer.stop()
-                self.TCP.sendData(cmd.CMD_MODE + self.intervalChar + 'four' + self.endChar)
+                self.TCP.sendData(
+                    cmd.CMD_MODE + self.intervalChar + "four" + self.endChar
+                )
 
     def on_btn_Connect(self):
         if self.Btn_Connect.text() == "Connect":
             self.h = self.IP.text()
-            self.TCP.StartTcpClient(self.h, )
-            file = open('IP.txt', 'w')
+            self.TCP.StartTcpClient(
+                self.h,
+            )
+            file = open("IP.txt", "w")
             file.write(self.IP.text())
             file.close()
             try:
                 self.streaming = Thread(target=self.TCP.streaming, args=(self.h,))
                 self.streaming.start()
             except:
-                print('video error')
+                print("video error")
             try:
                 self.recv = Thread(target=self.recvmassage)
                 self.recv.start()
             except:
-                print('recv error')
+                print("recv error")
+            self._init_video_receiver_thread()
             self.Btn_Connect.setText("Disconnect")
-            print('Server address:' + str(self.h) + '\n')
+            print("Server address:" + str(self.h) + "\n")
         elif self.Btn_Connect.text() == "Disconnect":
             self.Btn_Connect.setText("Connect")
             try:
@@ -776,18 +893,18 @@ class mywindow(QMainWindow, Ui_Client):
                 break
             else:
                 cmdArray = Alldata.split("\n")
-                if (cmdArray[-1] != ""):
+                if cmdArray[-1] != "":
                     restCmd = cmdArray[-1]
                     cmdArray = cmdArray[:-1]
             for oneCmd in cmdArray:
                 Massage = oneCmd.split("#")
                 if cmd.CMD_SONIC in Massage:
                     # self.Ultrasonic.setText('Obstruction:%s cm' % Massage[1])
-                    u = 'Obstruction:%s cm' % Massage[1]
+                    u = "Obstruction:%s cm" % Massage[1]
                     self.U.send(u)
                 elif cmd.CMD_LIGHT in Massage:
                     # self.Light.setText("Left:" + Massage[1] + 'V' + ' ' + "Right:" + Massage[2] + 'V')
-                    l = "Left:" + Massage[1] + 'V' + ' ' + "Right:" + Massage[2] + 'V'
+                    l = "Left:" + Massage[1] + "V" + " " + "Right:" + Massage[2] + "V"
                     self.L.send(l)
                 elif cmd.CMD_POWER in Massage:
                     percent_power = int((float(Massage[1]) - 7) / 1.40 * 100)

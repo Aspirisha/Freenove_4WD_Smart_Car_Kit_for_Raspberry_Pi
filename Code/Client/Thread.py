@@ -2,6 +2,8 @@ import threading
 import time
 import inspect
 import ctypes
+
+
 def _async_raise(tid, exctype):
     """raises the exception, performs cleanup if needed"""
     tid = ctypes.c_long(tid)
@@ -13,12 +15,18 @@ def _async_raise(tid, exctype):
     elif res != 1:
         ctypes.pythonapi.PyThreadState_SetAsyncExc(tid, None)
         raise SystemError("PyThreadState_SetAsyncExc failed")
+
+
 def stop_thread(thread):
     _async_raise(thread.ident, SystemExit)
+
+
 def test():
     while True:
-        print('-------')
+        print("-------")
         time.sleep(0.05)
+
+
 if __name__ == "__main__":
     t = threading.Thread(target=test)
     t.start()
