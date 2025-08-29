@@ -849,33 +849,24 @@ class mywindow(QMainWindow, Ui_Client):
             print("Server address:" + str(self.h) + "\n")
         elif self.Btn_Connect.text() == "Disconnect":
             self.Btn_Connect.setText("Connect")
-            try:
-                stop_thread(self.recv)
-                stop_thread(self.power)
-                stop_thread(self.streaming)
-            except:
-                pass
             self.TCP.StopTcpcClient()
+            self.recv.join()
+            self.power.join()
+            self.streaming.join()
+            self.label_Video.setPixmap(QPixmap("image/Raspberry_4WD_Car.png"))
 
     def close(self):
-        try:
-            stop_thread(self.recv)
-            stop_thread(self.streaming)
-        except:
-            pass
         self.TCP.StopTcpcClient()
-        try:
-            os.remove("video.jpg")
-        except:
-            pass
+        self.recv.join()
+        self.power.join()
+        self.streaming.join()
         QCoreApplication.instance().quit()
         sys.exit(0)
 
     def Power(self):
-        while True:
+        while not self.TCP._stop_event.wait(60):
             try:
                 self.TCP.sendData(cmd.CMD_POWER + self.endChar)
-                time.sleep(60)
             except:
                 break
 
@@ -885,7 +876,7 @@ class mywindow(QMainWindow, Ui_Client):
         self.power.start()
         restCmd = ""
 
-        while True:
+        while not self.TCP._stop_event.is_set():
             Alldata = restCmd + str(self.TCP.recvData())
             restCmd = ""
             print(Alldata)

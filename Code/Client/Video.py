@@ -8,8 +8,8 @@ import io
 import sys
 import struct
 import time
+import threading
 import traceback
-from typing import Tuple
 from PIL import Image
 from multiprocessing import Process, Queue
 from Command import COMMAND as cmd
@@ -147,6 +147,7 @@ class VideoStreaming:
         self._raw_image_queue = Queue()
         self._ready_frames_queue = Queue()
         self._image_processor = None
+        self._stop_event = threading.Event()
 
     @property
     def ready_frames(self) -> Queue:
@@ -154,6 +155,7 @@ class VideoStreaming:
 
     def StartTcpClient(self, IP):
         print("Starting TCP video receiving...")
+        self._stop_event.clear()
         self.client_socket1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         image_processor = ImageProcessor(
@@ -164,9 +166,10 @@ class VideoStreaming:
 
     def StopTcpcClient(self):
         try:
-            self.client_socket.shutdown(2)
-            self.client_socket1.shutdown(2)
-            self.client_socket.close()
+            logger.info("Stopping TCP client...")
+            self._stop_event.set()
+            self.connect_Flag = False
+            self.client_socket1.shutdown(socket.SHUT_RDWR)
             self.client_socket1.close()
             self._raw_image_queue.put((None, None))  # means stop
             self._ready_frames_queue.put((None, None))  # means stop
@@ -182,8 +185,8 @@ class VideoStreaming:
         except Exception as e:
             print("Failed to create connection:", str(e))
             pass
-        while True:
-            try:
+        try:
+            while not self._stop_event.is_set():
                 stream_bytes = self.connection.read(4)
                 leng = struct.unpack("<L", stream_bytes[:4])[0]
                 payload = bytearray(leng)
@@ -192,12 +195,18 @@ class VideoStreaming:
                     read += self.connection.readinto(payload[read:])
                 now = time.monotonic()
                 self._raw_image_queue.put((now, payload))
-            except Exception as e:
-                print("Failed to receive image: ", str(e))
-                print(traceback.format_exc())
-                break
+        except Exception as e:
+            logger.error("Failed to receive image: %s", str(e))
+            logger.error(traceback.format_exc())
+        finally:
+            self.client_socket.shutdown(socket.SHUT_RDWR)
+            self.client_socket.close()
 
     def sendData(self, s):
+        if self._stop_event.is_set():
+            logger.info("Connection to server stopped")
+            return
+
         if self.connect_Flag:
             logger.info("Sending data %s to server", s)
             self.client_socket1.send(s.encode("utf-8"))
