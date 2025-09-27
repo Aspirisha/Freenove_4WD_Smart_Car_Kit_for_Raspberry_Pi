@@ -864,7 +864,7 @@ class mywindow(QMainWindow, Ui_Client):
         sys.exit(0)
 
     def Power(self):
-        while not self.TCP._stop_event.wait(60):
+        while not self.TCP._stop_event.wait(1):
             try:
                 self.TCP.sendData(cmd.CMD_POWER + self.endChar)
             except:
@@ -898,7 +898,8 @@ class mywindow(QMainWindow, Ui_Client):
                     l = "Left:" + Massage[1] + "V" + " " + "Right:" + Massage[2] + "V"
                     self.L.send(l)
                 elif cmd.CMD_POWER in Massage:
-                    percent_power = int((float(Massage[1]) - 7) / 1.40 * 100)
+                    MAX_VOLATGE = 8.4
+                    percent_power = int(float(Massage[1]) / MAX_VOLATGE * 100)
                     # self.progress_Power.setValue(percent_power)
                     self.Pb.send(percent_power)
 
