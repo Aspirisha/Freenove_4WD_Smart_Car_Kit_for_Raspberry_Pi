@@ -51,6 +51,56 @@ class FrameGrabber(QObject):
         self.finished.emit()
 
 
+def get_motor_command(pressed_keys: set[str]) -> str:
+    full_speed = 1500
+    part_speed = 0
+    if "w" not in pressed_keys and "s" not in pressed_keys:
+        logger.info("Stopping motors")
+        left_upper_wheel = 0
+        left_lower_wheel = 0
+        right_upper_wheel = 0
+        right_lower_wheel = 0
+    elif "w" in pressed_keys:
+        if "d" in pressed_keys:
+            logger.info("Moving forward right")
+            left_upper_wheel = full_speed
+            left_lower_wheel = full_speed
+            right_upper_wheel = part_speed
+            right_lower_wheel = part_speed
+        elif "a" in pressed_keys:
+            logger.info("Moving forward left")
+            left_upper_wheel = part_speed
+            left_lower_wheel = part_speed
+            right_upper_wheel = full_speed
+            right_lower_wheel = full_speed
+        else:  # just forward
+            logger.info("Moving forward")
+            left_upper_wheel = full_speed
+            left_lower_wheel = full_speed
+            right_upper_wheel = full_speed
+            right_lower_wheel = full_speed
+    elif "s" in pressed_keys:
+        if "a" in pressed_keys:
+            logger.info("Moving back left")
+            left_upper_wheel = -part_speed
+            left_lower_wheel = -part_speed
+            right_upper_wheel = -full_speed
+            right_lower_wheel = -full_speed
+        elif "d" in pressed_keys:
+            logger.info("Moving back right")
+            left_upper_wheel = -full_speed
+            left_lower_wheel = -full_speed
+            right_upper_wheel = -part_speed
+            right_lower_wheel = -part_speed
+        else:
+            logger.info("Moving back")
+            left_upper_wheel = -full_speed
+            left_lower_wheel = -full_speed
+            right_upper_wheel = -full_speed
+            right_lower_wheel = -full_speed
+    return f"{cmd.CMD_MOTOR}#{left_upper_wheel}#{left_lower_wheel}#{right_upper_wheel}#{right_lower_wheel}\n"
+
+
 class mywindow(QMainWindow, Ui_Client):
     def __init__(self):
         global timer
@@ -78,10 +128,7 @@ class mywindow(QMainWindow, Ui_Client):
         self.m_DragPosition = self.pos()
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
         self.setMouseTracking(True)
-        self.Key_W = False
-        self.Key_A = False
-        self.Key_S = False
-        self.Key_D = False
+        self._pressed_keys = set()
         self.Key_Q = False
         self.Key_E = False
         self.Key_Z = False
@@ -236,53 +283,7 @@ class mywindow(QMainWindow, Ui_Client):
         self.workerThread.start()
 
     def _send_motor_command(self):
-        full_speed = 1500
-        part_speed = 0
-        if not self.Key_W and not self.Key_S:
-            logger.info("Stopping motors")
-            left_upper_wheel = 0
-            left_lower_wheel = 0
-            right_upper_wheel = 0
-            right_lower_wheel = 0
-        elif self.Key_W:
-            if self.Key_D:
-                logger.info("Moving forward right")
-                left_upper_wheel = full_speed
-                left_lower_wheel = full_speed
-                right_upper_wheel = part_speed
-                right_lower_wheel = part_speed
-            elif self.Key_A:
-                logger.info("Moving forward left")
-                left_upper_wheel = part_speed
-                left_lower_wheel = part_speed
-                right_upper_wheel = full_speed
-                right_lower_wheel = full_speed
-            else:  # just forward
-                logger.info("Moving forward")
-                left_upper_wheel = full_speed
-                left_lower_wheel = full_speed
-                right_upper_wheel = full_speed
-                right_lower_wheel = full_speed
-        elif self.Key_S:
-            if self.Key_A:
-                logger.info("Moving back left")
-                left_upper_wheel = -part_speed
-                left_lower_wheel = -part_speed
-                right_upper_wheel = -full_speed
-                right_lower_wheel = -full_speed
-            elif self.Key_D:
-                logger.info("Moving back right")
-                left_upper_wheel = -full_speed
-                left_lower_wheel = -full_speed
-                right_upper_wheel = -part_speed
-                right_lower_wheel = -part_speed
-            else:
-                logger.info("Moving back")
-                left_upper_wheel = -full_speed
-                left_lower_wheel = -full_speed
-                right_upper_wheel = -full_speed
-                right_lower_wheel = -full_speed
-        command = f"#{left_upper_wheel}#{left_lower_wheel}#{right_upper_wheel}#{right_lower_wheel}\n"
+        command = get_motor_command(self._pressed_keys)
         logger.info(f"Sending motor command: {command.strip()}")
         self.TCP.sendData(cmd.CMD_MOTOR + command)
 
@@ -401,22 +402,22 @@ class mywindow(QMainWindow, Ui_Client):
             pass
         else:
             if event.key() == Qt.Key_W:
-                self.Key_W = True
+                self._pressed_keys.add("w")
                 self._send_motor_command()
             elif event.key() == Qt.Key_S:
-                self.Key_S = True
+                self._pressed_keys.add("s")
                 self._send_motor_command()
             elif event.modifiers() == Qt.ShiftModifier and event.key() == Qt.Key_A:
                 self.on_btn_Turn_Left()
-                self.Key_A = True
+                self._pressed_keys.add("a")
             elif event.modifiers() == Qt.ShiftModifier and event.key() == Qt.Key_D:
                 self.on_btn_Turn_Right()
-                self.Key_D = True
+                self._pressed_keys.add("d")
             elif event.key() == Qt.Key_A:
-                self.Key_A = True
+                self._pressed_keys.add("a")
                 self._send_motor_command()
             elif event.key() == Qt.Key_D:
-                self.Key_D = True
+                self._pressed_keys.add("d")
                 self._send_motor_command()
 
             elif event.key() == Qt.Key_Q:
@@ -436,24 +437,23 @@ class mywindow(QMainWindow, Ui_Client):
                 self.Key_Space = True
 
     def keyReleaseEvent(self, event):
-
         if event.key() == Qt.Key_W:
             time.sleep(0.05)
             if event.key() == Qt.Key_W:
-                if not (event.isAutoRepeat()) and self.Key_W is True:
-                    self.Key_W = False
+                if not (event.isAutoRepeat()) and "w" in self._pressed_keys:
+                    self._pressed_keys.remove("w")
                     self._send_motor_command()
         elif event.key() == Qt.Key_A:
-            if not (event.isAutoRepeat()) and self.Key_A is True:
-                self.Key_A = False
+            if not (event.isAutoRepeat()) and "a" in self._pressed_keys:
+                self._pressed_keys.remove("a")
                 self._send_motor_command()
         elif event.key() == Qt.Key_S:
-            if not (event.isAutoRepeat()) and self.Key_S is True:
-                self.Key_S = False
+            if not (event.isAutoRepeat()) and "s" in self._pressed_keys:
+                self._pressed_keys.remove("s")
                 self._send_motor_command()
         elif event.key() == Qt.Key_D:
-            if not (event.isAutoRepeat()) and self.Key_D is True:
-                self.Key_D = False
+            if not (event.isAutoRepeat()) and "d" in self._pressed_keys:
+                self._pressed_keys.remove("d")
                 self._send_motor_command()
         elif event.key() == Qt.Key_Q:
             if not (event.isAutoRepeat()) and self.Key_Q is True:
