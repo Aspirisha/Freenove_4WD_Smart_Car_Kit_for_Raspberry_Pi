@@ -67,6 +67,8 @@ class mywindow(QMainWindow, Ui_Client):
         self.TCP = VideoStreaming()
         self.servo1 = 90
         self.servo2 = 90
+        self._servo1_diff = 0
+        self._servo2_diff = 0
         self.label_FineServo2.setText("0")
         self.label_FineServo1.setText("0")
         self.img = QImage()
@@ -497,27 +499,35 @@ class mywindow(QMainWindow, Ui_Client):
             self.Rotate_Flag = 1
 
     def on_btn_Up(self):
+        prev_servo = self.servo2
         self.servo2 = self.servo2 + 10
         if self.servo2 >= 180:
             self.servo2 = 180
+        self._servo2_diff = self.servo2 - prev_servo
         self.VSlider_Servo2.setValue(self.servo2)
 
-    def on_btn_Left(self):
-        self.servo1 = self.servo1 - 10
-        if self.servo1 <= 0:
-            self.servo1 = 0
-        self.HSlider_Servo1.setValue(self.servo1)
-
     def on_btn_Down(self):
+        prev_servo = self.servo2
         self.servo2 = self.servo2 - 10
         if self.servo2 <= 80:
             self.servo2 = 80
+        self._servo2_diff = self.servo2 - prev_servo
         self.VSlider_Servo2.setValue(self.servo2)
 
+    def on_btn_Left(self):
+        prev_servo = self.servo1
+        self.servo1 = self.servo1 - 10
+        if self.servo1 <= 0:
+            self.servo1 = 0
+        self._servo1_diff = self.servo1 - prev_servo
+        self.HSlider_Servo1.setValue(self.servo1)
+
     def on_btn_Right(self):
+        prev_servo = self.servo1
         self.servo1 = self.servo1 + 10
         if self.servo1 >= 180:
             self.servo1 = 180
+        self._servo1_diff = self.servo1 - prev_servo
         self.HSlider_Servo1.setValue(self.servo1)
 
     def on_btn_Home(self):
@@ -549,25 +559,23 @@ class mywindow(QMainWindow, Ui_Client):
             self.Light.setText("Light")
 
     def Change_Left_Right(self):  # Left or Right
-        self.servo1 = self.HSlider_Servo1.value()
         self.TCP.sendData(
             cmd.CMD_SERVO
             + self.intervalChar
             + "0"
             + self.intervalChar
-            + str(self.servo1)
+            + str(self._servo1_diff)
             + self.endChar
         )
         self.label_Servo1.setText("%d" % self.servo1)
 
     def Change_Up_Down(self):  # Up or Down
-        self.servo2 = self.VSlider_Servo2.value()
         self.TCP.sendData(
             cmd.CMD_SERVO
             + self.intervalChar
             + "1"
             + self.intervalChar
-            + str(self.servo2)
+            + str(self._servo2_diff)
             + self.endChar
         )
         self.label_Servo2.setText("%d" % self.servo2)
