@@ -1,0 +1,3 @@
+root_dir: /home/andysilv/freenove/Freenove_4WD_Smart_Car_Kit_for_Raspberry_Pi/Code/Server
+logs_dir: "{{ root_dir }}/logs"
+python: /home/andysilv/.pyenv/versions/3.13.5/envs/freenove/bin/python 

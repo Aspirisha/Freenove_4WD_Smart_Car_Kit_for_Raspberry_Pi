@@ -1,0 +1,32 @@
+- hosts: localhost
+  tasks:
+    - name: Run client
+      args:
+        chdir: ~/self/Freenove_4WD_Smart_Car_Kit_for_Raspberry_Pi/Code/Client
+      shell: nohup ~/self/venvs/freenove-py13/bin/python Main.py > local.log 2>&1 &
+
+- hosts: freenove
+  tasks:
+    - name: Get async_server PIDs
+      community.general.pids:
+        pattern: '(async_server|web_gateway\.gateway)'
+      register: found_pids
+      failed_when: false
+    - name: Kill async_server if running
+      ansible.builtin.command:
+        cmd: "kill {{ item }}"
+      loop: "{{ found_pids.pids | default([]) }}"
+      when: found_pids.pids is defined and found_pids.pids | length > 0
+      failed_when: false
+    - name: Creates logs dir if not exists
+      ansible.builtin.file:
+        path: "{{ logs_dir }}"
+        state: directory
+    - name: Run server
+      args:
+        chdir: "{{ root_dir }}" 
+      shell: nohup {{ python }} -m async_server > logs/server.log 2>&1 &
+    - name: Run web gateway
+      args:
+        chdir: "{{ root_dir }}"
+      shell: nohup {{ python }} -m web_gateway.gateway > logs/web_gateway.log 2>&1 &
