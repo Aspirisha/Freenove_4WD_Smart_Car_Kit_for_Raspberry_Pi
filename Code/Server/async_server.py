@@ -36,6 +36,7 @@ class CarModel:
         self.servo = Servo()
         self.buzzer = Buzzer(pin=self.BUZZER_PIN)
         self.PWM = Motor()
+        self.cam_angles = {"x": 90, "y": 90}
 
     def process_servo_command(self, data: List):
         logger.info("Processing servo command")
@@ -44,6 +45,13 @@ class CarModel:
             data2 = int(data[2])
             if data1 == None or data2 == None:
                 return
+            if data1 == "0":
+                self.cam_angles["x"] = max(0, min(180, self.cam_angles["x"] + data2))
+                data2 = self.cam_angles["x"]
+            elif data1 == "1":
+                self.cam_angles["y"] = max(80, min(180, self.cam_angles["y"] + data2))
+                data2 = self.cam_angles["y"]
+            logger.info("Setting servo %s to angle %d", data1, data2)
             self.servo.setServoPwm(data1, data2)
         except:
             pass
@@ -102,17 +110,37 @@ class AsyncStreamingOutput(io.BufferedIOBase):
         asyncio.create_task(notify())
 
 
-async def h264_streamer(
-    reader: asyncio.StreamReader,
-    writer: asyncio.StreamWriter,
-    output: AsyncStreamingOutput,
-):
-    while True:
-        async with output.condition:
-            await output.condition.wait()
-            frame = output.frame
-        writer.write(struct.pack("<L", len(frame)) + frame)
-        await writer.drain()
+class VideoStreamer:
+    def __init__(self, frames_producer: AsyncStreamingOutput):
+        self._client_connected = False
+        self._frames_producer = frames_producer
+
+    async def stream(
+        self,
+        reader: asyncio.StreamReader,
+        writer: asyncio.StreamWriter,
+    ):
+        logger.info("Started handling client video stream")
+        if self._client_connected:
+            writer.write(struct.pack("<L", 0))
+            await writer.drain()
+            return
+        self._client_connected = True
+        while True:
+            async with self._frames_producer.condition:
+                await self._frames_producer.condition.wait()
+                frame = self._frames_producer.frame
+            try:
+                writer.write(struct.pack("<L", len(frame)) + frame)
+                await writer.drain()
+            except (
+                ConnectionResetError,
+                ConnectionResetError,
+                BrokenPipeError,
+                asyncio.CancelledError,
+            ):
+                self._client_connected = False
+                break
 
 
 async def video_streamer(
@@ -220,9 +248,10 @@ async def create_video_server(use_video_config: bool):
         picam2.configure(picam2.create_video_configuration(main={"size": (400, 300)}))
         output = AsyncStreamingOutput()
         encoder = JpegEncoder(q=90)
+        streamer = VideoStreamer(output)
         picam2.start_recording(encoder, FileOutput(output), quality=Quality.VERY_HIGH)
         video_server = await asyncio.start_server(
-            lambda r, w: h264_streamer(r, w, output),
+            streamer.stream,
             "0.0.0.0",
             DEFAULT_VIDEO_PORT,
         )
