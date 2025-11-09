@@ -8,33 +8,17 @@ logger = logging.getLogger(__name__)
 
 
 class Motor:
+    MIN_DUTY = -4095
+    MAX_DUTY = 4095
+
     def __init__(self):
         self.pwm = PCA9685(0x40, debug=True)
         self.pwm.setPWMFreq(50)
         self.time_proportion = 3  # Depend on your own car,If you want to get the best out of the rotation mode, change the value by experimenting.
         self.adc = Adc()
 
-    def duty_range(self, duty1, duty2, duty3, duty4):
-        if duty1 > 4095:
-            duty1 = 4095
-        elif duty1 < -4095:
-            duty1 = -4095
-
-        if duty2 > 4095:
-            duty2 = 4095
-        elif duty2 < -4095:
-            duty2 = -4095
-
-        if duty3 > 4095:
-            duty3 = 4095
-        elif duty3 < -4095:
-            duty3 = -4095
-
-        if duty4 > 4095:
-            duty4 = 4095
-        elif duty4 < -4095:
-            duty4 = -4095
-        return duty1, duty2, duty3, duty4
+    def _duty_range(self, *duties):
+        return (max(min(d, self.MAX_DUTY), self.MIN_DUTY) for d in duties)
 
     def left_Upper_Wheel(self, duty):
         if duty > 0:
@@ -44,8 +28,8 @@ class Motor:
             self.pwm.setMotorPwm(1, 0)
             self.pwm.setMotorPwm(0, abs(duty))
         else:
-            self.pwm.setMotorPwm(0, 4095)
-            self.pwm.setMotorPwm(1, 4095)
+            self.pwm.setMotorPwm(0, self.MAX_DUTY)
+            self.pwm.setMotorPwm(1, self.MAX_DUTY)
 
     def left_Lower_Wheel(self, duty):
         if duty > 0:
@@ -55,8 +39,8 @@ class Motor:
             self.pwm.setMotorPwm(2, 0)
             self.pwm.setMotorPwm(3, abs(duty))
         else:
-            self.pwm.setMotorPwm(2, 4095)
-            self.pwm.setMotorPwm(3, 4095)
+            self.pwm.setMotorPwm(2, self.MAX_DUTY)
+            self.pwm.setMotorPwm(3, self.MAX_DUTY)
 
     def right_Upper_Wheel(self, duty):
         if duty > 0:
@@ -66,8 +50,8 @@ class Motor:
             self.pwm.setMotorPwm(7, 0)
             self.pwm.setMotorPwm(6, abs(duty))
         else:
-            self.pwm.setMotorPwm(6, 4095)
-            self.pwm.setMotorPwm(7, 4095)
+            self.pwm.setMotorPwm(6, self.MAX_DUTY)
+            self.pwm.setMotorPwm(7, self.MAX_DUTY)
 
     def right_Lower_Wheel(self, duty):
         if duty > 0:
@@ -77,17 +61,23 @@ class Motor:
             self.pwm.setMotorPwm(5, 0)
             self.pwm.setMotorPwm(4, abs(duty))
         else:
-            self.pwm.setMotorPwm(4, 4095)
-            self.pwm.setMotorPwm(5, 4095)
+            self.pwm.setMotorPwm(4, self.MAX_DUTY)
+            self.pwm.setMotorPwm(5, self.MAX_DUTY)
 
-    def setMotorModel(self, duty1, duty2, duty3, duty4):
-        duty1, duty2, duty3, duty4 = self.duty_range(duty1, duty2, duty3, duty4)
-        self.left_Upper_Wheel(duty1)
-        self.left_Lower_Wheel(duty2)
-        self.right_Upper_Wheel(duty3)
-        self.right_Lower_Wheel(duty4)
+    def setMotorModel(self, lu_duty, ll_duty, ru_duty, rl_duty):
+        lu_duty, ll_duty, ru_duty, rl_duty = self._duty_range(
+            lu_duty, ll_duty, ru_duty, rl_duty
+        )
+        self.left_Upper_Wheel(lu_duty)
+        self.left_Lower_Wheel(ll_duty)
+        self.right_Upper_Wheel(ru_duty)
+        self.right_Lower_Wheel(rl_duty)
         logger.info(
-            "Set motor model with duties: %d, %d, %d, %d", duty1, duty2, duty3, duty4
+            "Set motor model with duties: %d, %d, %d, %d",
+            lu_duty,
+            ll_duty,
+            ru_duty,
+            rl_duty,
         )
 
     def Rotate(self, n):

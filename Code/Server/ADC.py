@@ -8,37 +8,35 @@ logger = logging.getLogger(__name__)
 
 class Adc:
     REFERENCE_VOLTAGE = 3.3
+    # I2C address of the device
+    ADDRESS = 0x48
+    # ADS7830 Command
+    # 0x84 = 10000100:
+    #  Bit 7: always 1 for single-ended mode, here 1
+    #  Bits 6–4: channel selection (CH0–CH7), here 0 channel
+    #  Bits 3–0: power-down / mode control (here 0100 for "power-down between conversions" mode)
+    ADS7830_CMD = 0x84
 
     def __init__(self):
         # Get I2C bus
-        self.bus = smbus.SMBus(1)
+        self._bus = smbus.SMBus(1)
 
-        # I2C address of the device
-        self.ADDRESS = 0x48
-
-        # ADS7830 Command
-        # 0x84 = 10000100:
-        #  Bit 7: always 1 for single-ended mode, here 1
-        #  Bits 6–4: channel selection (CH0–CH7), here 0 channel
-        #  Bits 3–0: power-down / mode control (here 0100 for "power-down between conversions" mode)
-        self.ADS7830_CMD = 0x84
-
-        aa = self.bus.read_byte_data(self.ADDRESS, 0xF4)
+        aa = self._bus.read_byte_data(self.ADDRESS, 0xF4)
         if aa < 150:
-            self.Index = "PCF8591"
+            self._model = "PCF8591"
             raise ValueError("PCF8591 not supported")
-        self.Index = "ADS7830"
-        logger.info("Detected ADC type: %s", self.Index)
+        self._model = "ADS7830"
+        logger.info("Detected ADC type: %s", self._model)
 
-    def recvADS7830(self, channel):
+    def _recvADS7830(self, channel):
         # Select correct channel setting bits
         COMMAND_SET = self.ADS7830_CMD | (
             (((channel << 2) | (channel >> 1)) & 0x07) << 4
         )
-        self.bus.write_byte(self.ADDRESS, COMMAND_SET)
+        self._bus.write_byte(self.ADDRESS, COMMAND_SET)
         while 1:
-            value1 = self.bus.read_byte(self.ADDRESS)
-            value2 = self.bus.read_byte(self.ADDRESS)
+            value1 = self._bus.read_byte(self.ADDRESS)
+            value2 = self._bus.read_byte(self.ADDRESS)
             if value1 == value2:
                 break
         voltage = value1 / 255.0 * self.REFERENCE_VOLTAGE  # calculate the voltage value
@@ -46,10 +44,10 @@ class Adc:
         return voltage
 
     def recvADC(self, channel):
-        return self.recvADS7830(channel)
+        return self._recvADS7830(channel)
 
     def i2cClose(self):
-        self.bus.close()
+        self._bus.close()
 
 
 def loop():

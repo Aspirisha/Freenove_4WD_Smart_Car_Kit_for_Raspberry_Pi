@@ -41,18 +41,18 @@ class CarModel:
     def process_servo_command(self, data: List):
         logger.info("Processing servo command")
         try:
-            data1 = data[1]
-            data2 = int(data[2])
-            if data1 == None or data2 == None:
+            servo_channel = data[1]
+            angle = int(data[2])
+            if servo_channel is None or angle is None:
                 return
-            if data1 == "0":
-                self.cam_angles["x"] = max(0, min(180, self.cam_angles["x"] + data2))
-                data2 = self.cam_angles["x"]
-            elif data1 == "1":
-                self.cam_angles["y"] = max(80, min(180, self.cam_angles["y"] + data2))
-                data2 = self.cam_angles["y"]
-            logger.info("Setting servo %s to angle %d", data1, data2)
-            self.servo.setServoPwm(data1, data2)
+            if servo_channel == "0":
+                self.cam_angles["x"] = max(0, min(180, self.cam_angles["x"] + angle))
+                angle = self.cam_angles["x"]
+            elif servo_channel == "1":
+                self.cam_angles["y"] = max(80, min(180, self.cam_angles["y"] + angle))
+                angle = self.cam_angles["y"]
+            logger.info("Setting servo %s to angle %d", servo_channel, angle)
+            self.servo.setServoPwm(servo_channel, angle)
         except:
             pass
 
