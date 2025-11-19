@@ -12,7 +12,7 @@ from aiohttp import web, WSMsgType
 from async_server import DEFAULT_VIDEO_PORT, DEFAULT_COMMAND_PORT
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
-from Client.commands import get_motor_command
+from Client.commands import get_motor_command, get_motor_precise_command
 from Command import COMMAND as cmd
 
 
@@ -30,11 +30,28 @@ logging.basicConfig(
 )
 
 
+class AsyncLatestValue:
+    def __init__(self):
+        self._value = None
+        self._event = asyncio.Event()
+
+    def set(self, value):
+        self._value = value
+        self._event.set()
+
+    async def get(self):
+        # Wait for at least one value
+        await self._event.wait()
+        self._event.clear()
+        return self._value
+
+
 class CarConnection:
     def __init__(self):
         self.writer = None
         self.connected = asyncio.Event()
         self._pressed_keys = set()
+        self.telemetry = AsyncLatestValue()
 
     async def connect(self):
         while True:
@@ -46,9 +63,10 @@ class CarConnection:
                     FREENOVE_HOST, DEFAULT_COMMAND_PORT
                 )
                 self.writer = writer
+                self.reader = reader
                 self.connected.set()
                 logger.info("Connected to car!")
-                await reader.read()  # wait until disconnect
+                await self._reader_loop()  # wait until disconnect
             except Exception as e:
                 logger.error("Car connection failed: %s", e)
                 self.connected.clear()
@@ -59,6 +77,25 @@ class CarConnection:
         msg = (cmd).encode()
         self.writer.write(msg)
         await self.writer.drain()
+
+    async def _reader_loop(self):
+        while True:
+            line = await self.reader.readline()
+            if not line:
+                # disconnect
+                self.connected.clear()
+                break
+            data = line.decode().strip()
+            logger.debug("Received from car: %s", data)
+            res = data.split("#")
+            if res[0] == cmd.CMD_TELEMETRY:
+                self.telemetry.set(
+                    {
+                        "voltage": float(res[1]),
+                        "current": float(res[2]),
+                        "power": float(res[3]),
+                    }
+                )
 
 
 car = CarConnection()
@@ -122,7 +159,7 @@ def get_camera_command(data: str) -> str:
     )
 
 
-async def handle_ws(request):
+async def control_handler(request):
     ws = web.WebSocketResponse()
     await ws.prepare(request)
 
@@ -134,14 +171,20 @@ async def handle_ws(request):
             logger.info("Handling key event")
             data = msg.json()
             event = data.get("event")
-            key = data.get("key")
-            logger.info("Got %s key event %s", event, key)
             if event == "down":
+                key = data.get("key")
+                logger.info("Got %s key event %s", event, key)
                 car._pressed_keys.add(key)
                 await handle_key_down(key)
             elif event == "up":
+                key = data.get("key")
+                logger.info("Got %s key event %s", event, key)
                 car._pressed_keys.discard(key)
                 await handle_key_up(key)
+            elif event == "joystick_axes":
+                command = data["command"]
+                logger.info("Got %s joystick axes event %r", event, command)
+                await handle_joystick_axes(command["throttle"], command["steering"])
             else:
                 logger.warning("Unknown event type: %s", event)
 
@@ -165,6 +208,12 @@ async def handle_key_down(key):
         await car.send_cmd(command_str)
 
 
+async def handle_joystick_axes(throttle: float, steering: float):
+    command_str = get_motor_precise_command(throttle, steering)
+    if command_str:
+        await car.send_cmd(command_str)
+
+
 async def handle_key_up(key):
     command_str = ""
     if key in ("w", "a", "s", "d"):
@@ -177,13 +226,35 @@ async def index(request):
     return web.FileResponse(STATIC_DIR / "index.html")
 
 
+async def telemetry_reader(app):
+    while True:
+        await car.send_cmd(f"{cmd.CMD_TELEMETRY}{END_CHAR}")
+        await asyncio.sleep(0.2)
+
+
 async def start_background_tasks(app):
     app["car_task"] = asyncio.create_task(car.connect())
+    app["telemetry_task"] = asyncio.create_task(telemetry_reader(app))
 
 
 async def cleanup_background_tasks(app):
     app["car_task"].cancel()
+    app["telemetry_task"].cancel()
     await app["car_task"]
+
+
+async def telemetry_handler(request):
+    ws = web.WebSocketResponse()
+    await ws.prepare(request)
+
+    try:
+        while True:
+            telemetry = await car.telemetry.get()
+            await ws.send_json(telemetry)
+    except asyncio.CancelledError:
+        pass
+
+    return ws
 
 
 def main():
@@ -191,7 +262,8 @@ def main():
     app.on_startup.append(start_background_tasks)
     app.on_cleanup.append(cleanup_background_tasks)
     app.router.add_get("/video.mjpg", mjpeg_handler)
-    app.router.add_get("/ws", handle_ws)
+    app.router.add_get("/control", control_handler)
+    app.router.add_get("/telemetry", telemetry_handler)
     app.router.add_get("/", index)
     app.router.add_static(
         "/",

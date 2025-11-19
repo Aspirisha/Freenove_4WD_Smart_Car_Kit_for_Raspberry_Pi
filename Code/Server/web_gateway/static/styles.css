@@ -1,0 +1,30 @@
+body {
+    margin: 0;
+    background: black;
+    color: #00ff00;
+    font-family: monospace;
+    text-align: center;
+}
+
+#container {
+    display: flex;
+    flex-direction: column;
+    height: 80vh;
+}
+
+#video {
+    width: 50%;
+    height: 50%;
+    flex: 1;
+    object-fit: cover;
+}
+
+#telemetry {
+    padding: 10px;
+    background: black;
+    color: #00ff00;
+    font-size: 18px;
+    display: flex;
+    flex: 0; 
+    justify-content: space-around;
+}

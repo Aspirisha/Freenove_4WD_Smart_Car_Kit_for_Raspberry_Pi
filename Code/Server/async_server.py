@@ -18,6 +18,7 @@ from picamera2.encoders import Quality
 from ADC import Adc
 from Command import COMMAND as cmd
 from Motor import Motor
+from ina219_read import INA219
 from servo import Servo
 
 
@@ -36,6 +37,7 @@ class CarModel:
         self.servo = Servo()
         self.buzzer = Buzzer(pin=self.BUZZER_PIN)
         self.PWM = Motor()
+        self.ina219 = INA219()
         self.cam_angles = {"x": 90, "y": 90}
 
     def process_servo_command(self, data: List):
@@ -66,7 +68,8 @@ class CarModel:
             if data1 == None or data2 == None or data2 == None or data3 == None:
                 return
             self.PWM.setMotorModel(data1, data2, data3, data4)
-        except:
+        except Exception as e:
+            logger.error("Failed to process motor command: %s", e)
             pass
 
     def get_power(self) -> float:
@@ -218,6 +221,14 @@ async def command_handler(
                     car_model.process_servo_command(data)
                 elif cmd.CMD_MOTOR in data:
                     car_model.process_motor_command(data)
+                elif cmd.CMD_TELEMETRY in data:
+                    logger.info("Processing telemetry command: %r", data)
+                    voltage = car_model.ina219.read_bus_voltage()
+                    current = car_model.ina219.read_current()
+                    power = voltage * current / 1000  # in Watts
+                    msg = f"{cmd.CMD_TELEMETRY}#{round(voltage,2)}#{round(current,2)}#{round(power,2)}\n"
+                    writer.write(msg.encode())
+                    await writer.drain()
                 elif cmd.CMD_POWER in data:
                     logger.info("Processing power command: %r", data)
                     power = car_model.get_power()

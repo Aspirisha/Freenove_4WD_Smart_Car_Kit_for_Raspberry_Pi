@@ -53,3 +53,16 @@ def get_motor_command(pressed_keys: set[str]) -> str:
             right_upper_wheel = -full_speed
             right_lower_wheel = -full_speed
     return f"{cmd.CMD_MOTOR}#{left_upper_wheel}#{left_lower_wheel}#{right_upper_wheel}#{right_lower_wheel}\n"
+
+
+def get_motor_precise_command(throttle: float, steering: float) -> str:
+    full_speed = 3000
+    a = 1 - steering
+    b = 1 + steering
+
+    left_upper_wheel = int(full_speed * throttle * b)
+    left_lower_wheel = int(full_speed * throttle * b)
+    right_upper_wheel = int(full_speed * throttle * a)
+    right_lower_wheel = int(full_speed * throttle * a)
+
+    return f"{cmd.CMD_MOTOR}#{left_upper_wheel}#{left_lower_wheel}#{right_upper_wheel}#{right_lower_wheel}\n"
