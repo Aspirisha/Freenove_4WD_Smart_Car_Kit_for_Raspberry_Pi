@@ -67,6 +67,76 @@ window.addEventListener("gamepaddisconnected", (event) => {
 
 
 
+// Virtual joystick touch controls
+const joystickZone = document.getElementById('joystick-zone');
+const joystickKnob = document.getElementById('joystick-knob');
+const JOYSTICK_RADIUS = 75; // half of zone width/height
+
+let joystickTouchId = null;
+
+function sendJoystickAxes(throttle, steering) {
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ event: "joystick_axes", command: { throttle, steering } }));
+  }
+}
+
+function updateJoystick(clientX, clientY) {
+  const rect = joystickZone.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+
+  let dx = clientX - cx;
+  let dy = clientY - cy;
+
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist > JOYSTICK_RADIUS) {
+    dx = dx / dist * JOYSTICK_RADIUS;
+    dy = dy / dist * JOYSTICK_RADIUS;
+  }
+
+  joystickKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+  sendJoystickAxes(-dy / JOYSTICK_RADIUS, dx / JOYSTICK_RADIUS);
+}
+
+function resetJoystick() {
+  joystickTouchId = null;
+  joystickKnob.style.transform = 'translate(-50%, -50%)';
+  sendJoystickAxes(0, 0);
+}
+
+joystickZone.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  if (joystickTouchId === null) {
+    const touch = e.changedTouches[0];
+    joystickTouchId = touch.identifier;
+    updateJoystick(touch.clientX, touch.clientY);
+  }
+}, { passive: false });
+
+joystickZone.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  for (const touch of e.changedTouches) {
+    if (touch.identifier === joystickTouchId) {
+      updateJoystick(touch.clientX, touch.clientY);
+      break;
+    }
+  }
+}, { passive: false });
+
+joystickZone.addEventListener('touchend', (e) => {
+  e.preventDefault();
+  for (const touch of e.changedTouches) {
+    if (touch.identifier === joystickTouchId) {
+      resetJoystick();
+      break;
+    }
+  }
+}, { passive: false });
+
+joystickZone.addEventListener('touchcancel', resetJoystick);
+
+
+
 const telemetryWs = new WebSocket(`ws://${location.host}/telemetry`);
 
 telemetryWs.onopen = () => {

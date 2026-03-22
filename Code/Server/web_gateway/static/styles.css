@@ -8,23 +8,57 @@ body {
 
 #container {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     height: 80vh;
 }
 
 #video {
-    width: 50%;
-    height: 50%;
-    flex: 1;
-    object-fit: cover;
+    width: 100%;          /* scale to full container width */
+    height: auto;         /* preserve aspect ratio */
+    max-height: 100%;     /* don’t overflow container */
+    display: block;
+    object-fit: contain;  /* preserves aspect ratio, adds letterbox if needed */
+    background: black;    /* black bars for letterboxing */
+}
+
+#joystick-container {
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+}
+
+#joystick-zone {
+    position: relative;
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    background: #333;
+    border: 2px solid #00ff00;
+    touch-action: none;
+    user-select: none;
+}
+
+#joystick-knob {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: #00ff00;
+    opacity: 0.7;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    transition: transform 0.05s;
 }
 
 #telemetry {
+    flex: 0 0 200px;          /* fixed width panel */
     padding: 10px;
-    background: black;
-    color: #00ff00;
-    font-size: 18px;
+    background: #222;
     display: flex;
-    flex: 0; 
-    justify-content: space-around;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 10px;
 }
+
