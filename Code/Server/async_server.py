@@ -8,6 +8,7 @@ import sys
 from typing import List
 
 import cv2
+import numpy as np
 
 from gpiozero import Buzzer
 from picamera2 import Picamera2
@@ -101,7 +102,13 @@ class AsyncStreamingOutput(io.BufferedIOBase):
     def write(self, buf):
         # Called by Picamera2 in sync context
         # Use asyncio thread-safe call to wake waiting coroutines
-        self.frame = buf
+        nparr = np.frombuffer(buf, np.uint8)
+        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        frame = cv2.rotate(frame, cv2.ROTATE_180)
+        _, buffer = cv2.imencode(".jpg", frame)
+        output_bytes = buffer.tobytes()
+        self.frame = output_bytes
+
         self._loop.call_soon_threadsafe(self._notify)
 
     def _notify(self):
