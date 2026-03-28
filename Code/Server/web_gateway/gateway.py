@@ -1,5 +1,6 @@
 # video_gateway.py
 import asyncio
+from datetime import datetime
 import json
 import logging
 from pathlib import Path
@@ -94,6 +95,7 @@ class CarConnection:
                         "voltage": float(res[1]),
                         "current": float(res[2]),
                         "power": float(res[3]),
+                        "time": datetime.now().strftime("%H:%M:%S"),
                     }
                 )
 

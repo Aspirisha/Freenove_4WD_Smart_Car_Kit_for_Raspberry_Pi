@@ -146,6 +146,7 @@ telemetryWs.onopen = () => {
 const vEl = document.getElementById("v");
 const iEl = document.getElementById("i");
 const pEl = document.getElementById("p");
+const timeEl = document.getElementById("datetime");
 
 telemetryWs.onmessage = (event) => {
     const data = JSON.parse(event.data);
@@ -153,6 +154,7 @@ telemetryWs.onmessage = (event) => {
     vEl.textContent = data.voltage.toFixed(2);
     iEl.textContent = data.current.toFixed(2);
     pEl.textContent = data.power.toFixed(2);
+    timeEl.textContent = data.time;
 };
 
 telemetryWs.onclose = () => {

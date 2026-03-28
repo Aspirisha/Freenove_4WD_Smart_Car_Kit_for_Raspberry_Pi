@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 from functools import partial
 import logging
 import io
@@ -100,24 +101,38 @@ class AsyncStreamingOutput(io.BufferedIOBase):
         self._loop = loop or asyncio.get_event_loop()
 
     def write(self, buf):
-        # Called by Picamera2 in sync context
-        # Use asyncio thread-safe call to wake waiting coroutines
+        # Called by Picamera2 in sync context (receives already-encoded JPEG).
+        # Decode → process → re-encode is expensive; store raw JPEG directly
+        # when no processing is needed, or decode once for overlay/rotation.
         nparr = np.frombuffer(buf, np.uint8)
         frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
         frame = cv2.rotate(frame, cv2.ROTATE_180)
-        _, buffer = cv2.imencode(".jpg", frame)
-        output_bytes = buffer.tobytes()
-        self.frame = output_bytes
-
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cv2.putText(
+            frame, timestamp, (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 3
+        )
+        cv2.putText(
+            frame,
+            timestamp,
+            (10, 25),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            (255, 255, 255),
+            1,
+        )
+        _, buffer = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 90])
+        self.frame = buffer.tobytes()
         self._loop.call_soon_threadsafe(self._notify)
 
     def _notify(self):
-        # Wakes up one or more coroutines waiting on the condition
-        async def notify():
-            async with self.condition:
-                self.condition.notify_all()
+        # Notify all waiters without creating a new Task object each frame.
+        cond = self.condition
+        if cond._waiters:
+            asyncio.ensure_future(self._async_notify())
 
-        asyncio.create_task(notify())
+    async def _async_notify(self):
+        async with self.condition:
+            self.condition.notify_all()
 
 
 class VideoStreamer:
